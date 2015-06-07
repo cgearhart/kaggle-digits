@@ -58,23 +58,23 @@ def predict(model_path, test_path, output_path):
         The file name of the output file.
     """
 
-    print("loading model...")
+    print("Loading model...")
 
     try:
         model = serial.load(model_path)
     except Exception as e:
-        print("error loading {}:".format(model_path))
+        print("Error loading {}:".format(model_path))
         print(e)
         return False
 
-    print("setting up symbolic expressions...")
+    print("Setting up symbolic expressions...")
     X = model.get_input_space().make_theano_batch()
     Y = model.fprop(X)
     Y = T.argmax(Y, axis=1)
 
     f = function([X], Y, allow_input_downcast=True)
 
-    print("loading data and predicting...")
+    print("Loading data and predicting...")
     x = np.load(open(test_path, 'rb'))  # x is a numpy.ndarray
     m, _, _, _ = x.shape
     step = m / 100  # TODO:: make batch size a parameter
@@ -86,6 +86,8 @@ def predict(model_path, test_path, output_path):
     final_predictions = pd.Series(y, name="Label")
     final_predictions.index += 1  # adjust the index to start at 1
     final_predictions.to_csv(output_path, index_label="ImageId", header=True)
+
+    print("Done.")
 
     return True
 

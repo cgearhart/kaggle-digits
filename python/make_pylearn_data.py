@@ -94,7 +94,7 @@ if __name__ == "__main__":
     print("Building test dataset...")
     test_df = pd.read_csv(path.join(DATA_DIR, "test.csv"), delimiter=",")
     test_data = preprocess(test_df)
-    np.save(path.join(TMP_DIR, "np_test.npy"), test_data)
+    np.save(path.join(TMP_DIR, "test.npy"), test_data)
 
     print("Building training & cross-validation design matrices...")
     train_df = pd.read_csv(path.join(DATA_DIR, "train.csv"), delimiter=",")
@@ -104,7 +104,7 @@ if __name__ == "__main__":
     serial.save(path.join(TMP_DIR, 'train.pkl'), x)
 
     if cv:
-        cv.use_design_loc(path.join(TMP_DIR, 'cv.npy'))
+        cv.use_design_loc(path.join(TMP_DIR, 'cv_design.npy'))
         serial.save(path.join(TMP_DIR, 'cv.pkl'), cv)
 
     print("Done.")
