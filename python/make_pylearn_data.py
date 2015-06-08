@@ -4,8 +4,46 @@ from os import path
 import numpy as np
 import pandas as pd
 
+from PIL import Image
+
 from pylearn2.datasets.dense_design_matrix import DenseDesignMatrix
 from pylearn2.utils import serial
+
+
+def expand(df, n):
+    """
+    Expand the training data set by adding new rows constructed from
+    the original data by applying a random rotation in the range +/- 10
+    degrees.
+
+    Parameters
+    ----------
+    df : Pandas DataFrame
+        dataframe containing flattened images on each row; col 1 is label
+    n : int
+        number of new examples to generate
+
+    Returns Pandas DataFrame with new examples appended to the end
+    """
+    m, c = df.shape
+    s = np.sqrt(c - 1).astype(np.int)
+    assert(s**2 == c - 1)
+
+    new_rows = np.ndarray((n, c))
+    indices = np.random.choice(m, size=n, replace=True)
+    angles = np.random.random(size=n) * 5
+    for i, (idx, angle) in enumerate(zip(indices, angles)):
+        new_rows[i, 0] = df.iloc[idx, 0]  # propagate the label
+
+        # rotate the image a small amount with PIL and append the row
+        np_img = df.iloc[idx, 1:].reshape((s, s)).astype(np.uint8)
+        img = Image.fromarray(np_img)
+        img = img.rotate(angle)
+        row = np.array(img).reshape((1, c - 1)).astype(np.uint8)
+        new_rows[i, 1:] = row
+
+    new_df = pd.DataFrame.from_records(new_rows, columns=df.columns)
+    return df.append(new_df)
 
 
 def preprocess(df):
@@ -57,7 +95,6 @@ def makeDesignMatrix(df, cv_ratio=None, batch_size=None):
 
     Returns DenseDesignMatrix tuple containing [training_data, cv_data]
     """
-
     X = preprocess(df.iloc[:, 1:])
     Y = np.atleast_2d(df['label'].as_matrix().astype(np.uint8)).T
 
@@ -96,8 +133,11 @@ if __name__ == "__main__":
     test_data = preprocess(test_df)
     np.save(path.join(TMP_DIR, "test.npy"), test_data)
 
-    print("Building training & cross-validation design matrices...")
+    print("Generating new examples...")
     train_df = pd.read_csv(path.join(DATA_DIR, "train.csv"), delimiter=",")
+    train_df = expand(df, 20000)
+
+    print("Building training & cross-validation design matrices...")
     [x, cv] = makeDesignMatrix(train_df, cv_ratio=0.2, batch_size=100)
 
     x.use_design_loc(path.join(TMP_DIR, 'train_design.npy'))

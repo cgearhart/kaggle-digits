@@ -1,3 +1,4 @@
+# rev 1
 !obj:pylearn2.train.Train {
     dataset: &train !pkl: "tmp/train.pkl",
     model: !obj:pylearn2.models.mlp.MLP {
@@ -9,7 +10,7 @@
         },
         layers: [ !obj:pylearn2.models.mlp.ConvRectifiedLinear {
                      layer_name: 'h2',
-                     output_channels: 64,
+                     output_channels: 128,
                      irange: .05,
                      kernel_shape: [5, 5],
                      pool_shape: [2, 2],
@@ -25,12 +26,14 @@
                      max_kernel_norm: 1.9365
                  }, !obj:pylearn2.models.mlp.Sigmoid {
                      layer_name: 'h4',
-                     dim: 512,
-                     irange: .05
+                     dim: 256,
+                     irange: .05,
+                     max_col_norm: 1.9365
                  }, !obj:pylearn2.models.mlp.Sigmoid {
                      layer_name: 'h5',
-                     dim: 128,
-                     irange: .05
+                     dim: 64,
+                     irange: .05,
+                     max_col_norm: 1.9365
                  }, !obj:pylearn2.models.mlp.Softmax {
                      max_col_norm: 1.9365,
                      layer_name: 'y',
@@ -41,21 +44,14 @@
     },
     algorithm: !obj:pylearn2.training_algorithms.sgd.SGD {
         batch_size: 100,
-        learning_rate: .01,
+        learning_rate: .05,
         learning_rule: !obj:pylearn2.training_algorithms.learning_rule.Momentum {
             init_momentum: .5
         },
         monitoring_dataset: {
-                'valid': !pkl: "tmp/cv.pkl",
-                'test': *train
+                'valid': !pkl: "tmp/cv.pkl"
             },
-        cost: !obj:pylearn2.costs.cost.SumOfCosts { costs: [
-            !obj:pylearn2.costs.mlp.dropout.Dropout {},
-            !obj:pylearn2.costs.mlp.WeightDecay {
-                coeffs: [ .00005, .00005, .00005, .00005, .00005 ]
-            }
-            ]
-        },
+        cost: !obj:pylearn2.costs.mlp.dropout.Dropout {},
         termination_criterion: !obj:pylearn2.termination_criteria.And {
             criteria: [
                 !obj:pylearn2.termination_criteria.MonitorBased {
