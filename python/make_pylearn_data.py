@@ -43,7 +43,7 @@ def expand(df, n):
         new_rows[i, 1:] = row
 
     new_df = pd.DataFrame.from_records(new_rows, columns=df.columns)
-    return df.append(new_df)
+    return new_df.append(df)
 
 
 def preprocess(df):
@@ -135,10 +135,10 @@ if __name__ == "__main__":
 
     print("Generating new examples...")
     train_df = pd.read_csv(path.join(DATA_DIR, "train.csv"), delimiter=",")
-    train_df = expand(df, 20000)
+    train_df = expand(train_df, 22000)
 
     print("Building training & cross-validation design matrices...")
-    [x, cv] = makeDesignMatrix(train_df, cv_ratio=0.2, batch_size=100)
+    [x, cv] = makeDesignMatrix(train_df, cv_ratio=0.125, batch_size=100)
 
     x.use_design_loc(path.join(TMP_DIR, 'train_design.npy'))
     serial.save(path.join(TMP_DIR, 'train.pkl'), x)
