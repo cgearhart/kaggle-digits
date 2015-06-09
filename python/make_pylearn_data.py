@@ -29,7 +29,8 @@ def expand(df, n):
     s = np.sqrt(c - 1).astype(np.int)
     assert(s**2 == c - 1)
 
-    new_rows = np.ndarray((n, c))
+    old_rows = df.as_matrix().astype(np.uint8)
+    new_rows = np.ndarray((n, c), dtype=np.uint8)
     indices = np.random.choice(m, size=n, replace=True)
     angles = np.random.random(size=n) * 5
     for i, (idx, angle) in enumerate(zip(indices, angles)):
@@ -42,8 +43,11 @@ def expand(df, n):
         row = np.array(img).reshape((1, c - 1)).astype(np.uint8)
         new_rows[i, 1:] = row
 
-    new_df = pd.DataFrame.from_records(new_rows, columns=df.columns)
-    return new_df.append(df)
+    mat = np.concatenate([old_rows, new_rows])
+    np.random.shuffle(mat)
+    new_df = pd.DataFrame.from_records(mat, columns=df.columns)
+
+    return new_df
 
 
 def preprocess(df):
@@ -144,13 +148,13 @@ if __name__ == "__main__":
     np.save(path.join(TMP_DIR, "test.npy"), test_data)
 
     print("Generating synthetic training examples...")
-    train_df = pd.read_csv(path.join(DATA_DIR, "train.csv"), delimiter=",")
-    [trainData, cvData] = splitData(train_df, cv_ratio=0.2, batch_size=100)
-    trainData = expand(trainData, 16400)
+    df = pd.read_csv(path.join(DATA_DIR, "train.csv"), delimiter=",")
+    df = expand(df, 22000)
+    [training, crossVal] = splitData(df, cv_ratio=0.125, batch_size=100)
 
     print("Building training & cross-validation design matrices...")
-    x = makeDesignMatrix(trainData)
-    cv = makeDesignMatrix(cvData)
+    x = makeDesignMatrix(training)
+    cv = makeDesignMatrix(crossVal)
 
     x.use_design_loc(path.join(TMP_DIR, 'train_design.npy'))
     serial.save(path.join(TMP_DIR, 'train.pkl'), x)
