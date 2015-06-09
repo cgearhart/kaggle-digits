@@ -75,12 +75,8 @@ def preprocess(df):
     return X
 
 
-def makeDesignMatrix(df, cv_ratio=None, batch_size=None):
+def splitData(df, cv_ratio=None, batch_size=None):
     """
-    Use a dataframe of training data to create DenseDesignMatrix instances
-    for pylearn2, optionally splitting the data into training and cross
-    validation sets.
-
     Parameters
     ----------
     df : Pandas DataFrame
@@ -93,13 +89,10 @@ def makeDesignMatrix(df, cv_ratio=None, batch_size=None):
         when the number of rows in df is not a multiple of the batch size.
         batch_size is ignored if cv_ratio is None or 0.
 
-    Returns DenseDesignMatrix tuple containing [training_data, cv_data]
     """
-    X = preprocess(df.iloc[:, 1:])
-    Y = np.atleast_2d(df['label'].as_matrix().astype(np.uint8)).T
-
     m, _ = df.shape
     n = m
+    x = None
     cv = None
 
     if cv_ratio:
@@ -111,17 +104,34 @@ def makeDesignMatrix(df, cv_ratio=None, batch_size=None):
                              + "multiple of batch_size."))
 
         n = int(m * (1 - cv_ratio) / batch_size) * batch_size
-        cv = DenseDesignMatrix(topo_view=X[n:, :, :, :],
-                               y=Y[n:, :],
-                               axes=['b', 0, 1, 'c'],
-                               y_labels=10)
+        cv = df.iloc[n:, :]
+    x = df.iloc[:n, :]
 
-    x = DenseDesignMatrix(topo_view=X[:n, :, :, :],
-                          y=Y[:n, :],
+    return [x, cv]
+
+
+def makeDesignMatrix(df, cv_ratio=None, batch_size=None):
+    """
+    Use a dataframe of training data to create DenseDesignMatrix instances
+    for pylearn2, optionally splitting the data into training and cross
+    validation sets.
+
+    Parameters
+    ----------
+    df : Pandas DataFrame
+        dataframe containing flattened image instances on each row
+
+    Returns DenseDesignMatrix tuple containing the data and labels
+    """
+    X = preprocess(df.iloc[:, 1:])
+    Y = np.atleast_2d(df['label'].as_matrix().astype(np.uint8)).T
+
+    x = DenseDesignMatrix(topo_view=X,
+                          y=Y,
                           axes=['b', 0, 1, 'c'],
                           y_labels=10)
 
-    return [x, cv]
+    return x
 
 
 if __name__ == "__main__":
@@ -133,12 +143,14 @@ if __name__ == "__main__":
     test_data = preprocess(test_df)
     np.save(path.join(TMP_DIR, "test.npy"), test_data)
 
-    print("Generating new examples...")
+    print("Generating synthetic training examples...")
     train_df = pd.read_csv(path.join(DATA_DIR, "train.csv"), delimiter=",")
-    train_df = expand(train_df, 22000)
+    [trainData, cvData] = splitData(train_df, cv_ratio=0.2, batch_size=100)
+    trainData = expand(trainData, 16400)
 
     print("Building training & cross-validation design matrices...")
-    [x, cv] = makeDesignMatrix(train_df, cv_ratio=0.125, batch_size=100)
+    x = makeDesignMatrix(trainData)
+    cv = makeDesignMatrix(cvData)
 
     x.use_design_loc(path.join(TMP_DIR, 'train_design.npy'))
     serial.save(path.join(TMP_DIR, 'train.pkl'), x)
